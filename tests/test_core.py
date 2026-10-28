@@ -131,6 +131,13 @@ def test_stage_model_compiles():
     compile(src, "stage_model.py", "exec")
 
 
+def test_load_model_embeds_and_compiles():
+    import importlib.resources
+    src = importlib.resources.files("nrp_kit").joinpath("load_model.py").read_text("utf-8")
+    compile(src, "load_model.py", "exec")
+    assert podscript.embed_module("load_model.py", "/tmp/l.py").startswith("echo ")
+
+
 def test_capacity_summary():
     from nrp_kit.capacity import NodeGPUs, summary
     nodes = [NodeGPUs("a", "z1", "NVIDIA-A10", 8, 6, True), NodeGPUs("b", "z1", "NVIDIA-A10", 8, 0, False),

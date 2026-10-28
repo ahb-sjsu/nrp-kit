@@ -18,6 +18,7 @@ The package collects the pieces several of our projects had each written for the
 | `capacity` | Estimates where GPUs are likely free, per zone and model, from the node list and the cluster's public GPU metrics, without submitting anything. |
 | `volumes` | Sets of small single-attach block volumes, one weight file per volume, read in parallel so a GPU pod's weights arrive quickly. |
 | `stage_model` | Runs in a small CPU pod: stages a Hugging Face model onto a volume set and verifies every file's hash. |
+| `load_model` | Runs in a GPU pod: builds a Hugging Face causal LM with no memory, then reads the volume set's weight files in parallel straight into the GPU, without memory-mapping, so a 7B model loads in a small-class pod (1 CPU, 2 GiB). Checked against `from_pretrained` in CI. |
 | `podscript` | Builds Job commands with helpers embedded as base64, so nothing depends on shell quoting. |
 | `fetch` | Brings a result directory back from a volume through small Jobs' logs, checked by sha256. |
 
@@ -26,7 +27,7 @@ The package collects the pieces several of our projects had each written for the
 1. `python -m nrp_kit.capacity`: pick a zone and GPU model with likely free GPUs.
 2. `VolumeSet(...).apply(site)`: create a volume set in that zone.
 3. A small CPU Job runs `stage_model.py` onto the set: environment, code and weights, verified.
-4. A pilot GPU Job, with a stated request, runs a first slice while `usage_recorder` measures it.
+4. A pilot GPU Job, with a stated request (small class when it loads with `load_model`), runs a first slice while `usage_recorder` measures it.
 5. `sizing.request_for(...)` sizes the remaining Jobs from the pilot's measurement.
 6. The remaining slices run, at most the namespace's number of full-use GPU pods at a time.
 7. `fetch` brings the outputs home; `VolumeSet.release` removes the volumes when no Job is active.
