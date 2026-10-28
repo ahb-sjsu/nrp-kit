@@ -8,9 +8,10 @@ attached to a pod, labelled with the pod's Hostname. So for each schedulable, un
 
     likely free = allocatable GPUs - GPUs with an exporter series on that host
 
-A node with no series at all is either idle or not covered by the exporter; such nodes are
-reported as "no series", not as known free. One pinned submission settles which (the scheduler
-answers within seconds), so pick from the list and submit one Job, not several.
+A node with no series at all is not covered by the exporter as far as this can tell: it is
+reported as "no series" (unknown), never as free. In the first use, both such nodes turned out
+fully allocated when a pinned Job was submitted. Treat the "free" column as the signal; one pinned
+submission (the scheduler answers within seconds) settles an unknown node.
 """
 
 from __future__ import annotations
@@ -93,7 +94,7 @@ def main(argv=None):
     ap.add_argument("--min", type=int, default=1, help="hide rows with fewer free (or unseen) GPUs")
     a = ap.parse_args(argv)
     site = config.load()
-    print(f"{'zone':20s} {'product':34s} {'free':>5s} {'no-series':>9s} {'nodes':>5s}")
+    print(f"{'zone':20s} {'product':34s} {'free':>5s} {'unknown':>9s} {'nodes':>5s}")
     for z, p, free, unseen, k in summary(gpu_nodes(site), a.models):
         if free + unseen >= a.min:
             print(f"{z:20s} {p:34s} {free:5d} {unseen:9d} {k:5d}")
