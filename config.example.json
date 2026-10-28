@@ -4,6 +4,8 @@
   "kubectl": "kubectl",
   "request_timeout_s": 60,
   "labels": {"atlas.io/batch": "my-run"},
+  "grafana_url": "https://grafana.nrp-nautilus.io",
+  "grafana_ds": "uid-of-the-prometheus-datasource",
   "policy": {
     "_source": "copy these from your cluster's current published usage policy",
     "cpu_band": [0.0, 0.0],

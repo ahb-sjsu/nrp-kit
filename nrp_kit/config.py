@@ -34,6 +34,8 @@ class Site:
     kubectl: str = "kubectl"
     request_timeout_s: int = 60
     labels: dict = field(default_factory=dict)  # added to every Job this package submits
+    grafana_url: str = ""  # the cluster's public Grafana, for capacity.py
+    grafana_ds: str = ""  # uid of its Prometheus datasource with the DCGM GPU metrics
 
 
 def path() -> str:
@@ -61,4 +63,6 @@ def load(p: str | None = None) -> Site:
         kubectl=d.get("kubectl", "kubectl"),
         request_timeout_s=int(d.get("request_timeout_s", 60)),
         labels=dict(d.get("labels", {})),
+        grafana_url=d.get("grafana_url", ""),
+        grafana_ds=d.get("grafana_ds", ""),
     )

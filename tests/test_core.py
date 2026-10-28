@@ -129,3 +129,12 @@ def test_stage_model_compiles():
     import importlib.resources
     src = importlib.resources.files("nrp_kit").joinpath("stage_model.py").read_text("utf-8")
     compile(src, "stage_model.py", "exec")
+
+
+def test_capacity_summary():
+    from nrp_kit.capacity import NodeGPUs, summary
+    nodes = [NodeGPUs("a", "z1", "NVIDIA-A10", 8, 6, True), NodeGPUs("b", "z1", "NVIDIA-A10", 8, 0, False),
+             NodeGPUs("c", "z2", "NVIDIA-L4", 4, 4, True)]
+    rows = summary(nodes)
+    assert ("z1", "NVIDIA-A10", 2, 8, 2) in rows and ("z2", "NVIDIA-L4", 0, 0, 1) in rows
+    assert summary(nodes, "L4$") == [("z2", "NVIDIA-L4", 0, 0, 1)]

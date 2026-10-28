@@ -15,6 +15,7 @@ The package collects the pieces several of our projects had each written for the
 | `usage_recorder` | Runs beside a batch on the submitting host. Records each Job's measured usage for `sizing`, and can stop our own pods that hold much more than they use. |
 | `preflight` | Checks a Job descriptor before submission: ends by itself, bounded steps, no installs or downloads on GPU pods, measured or stated requests, zone pinning for block volumes, the namespace's GPU pod count. |
 | `submit` | Submits through nats-bursting; never replaces an active Job; removes a finished Job of the same name first and checks the new Job is fresh. |
+| `capacity` | Estimates where GPUs are likely free, per zone and model, from the node list and the cluster's public GPU metrics, without submitting anything. |
 | `volumes` | Sets of small single-attach block volumes, one weight file per volume, read in parallel so a GPU pod's weights arrive quickly. |
 | `stage_model` | Runs in a small CPU pod: stages a Hugging Face model onto a volume set and verifies every file's hash. |
 | `podscript` | Builds Job commands with helpers embedded as base64, so nothing depends on shell quoting. |
@@ -22,12 +23,13 @@ The package collects the pieces several of our projects had each written for the
 
 ## The workflow it supports
 
-1. `VolumeSet(...).apply(site)`: create the volumes.
-2. A small CPU Job runs `stage_model.py` onto the set: environment, code and weights, verified.
-3. A pilot GPU Job, with a stated request, runs a first slice while `usage_recorder` measures it.
-4. `sizing.request_for(...)` sizes the remaining Jobs from the pilot's measurement.
-5. The remaining slices run, at most the namespace's number of full-use GPU pods at a time.
-6. `fetch` brings the outputs home; `VolumeSet.release` removes the volumes when no Job is active.
+1. `python -m nrp_kit.capacity`: pick a zone and GPU model with likely free GPUs.
+2. `VolumeSet(...).apply(site)`: create a volume set in that zone.
+3. A small CPU Job runs `stage_model.py` onto the set: environment, code and weights, verified.
+4. A pilot GPU Job, with a stated request, runs a first slice while `usage_recorder` measures it.
+5. `sizing.request_for(...)` sizes the remaining Jobs from the pilot's measurement.
+6. The remaining slices run, at most the namespace's number of full-use GPU pods at a time.
+7. `fetch` brings the outputs home; `VolumeSet.release` removes the volumes when no Job is active.
 
 ## Configuration
 
