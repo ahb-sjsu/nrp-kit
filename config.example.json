@@ -1,0 +1,16 @@
+{
+  "namespace": "your-namespace",
+  "nats_url": "nats://localhost:4222",
+  "kubectl": "kubectl",
+  "request_timeout_s": 60,
+  "labels": {"atlas.io/batch": "my-run"},
+  "policy": {
+    "_source": "copy these from your cluster's current published usage policy",
+    "cpu_band": [0.0, 0.0],
+    "memory_band": [0.0, 0.0],
+    "small_class_cpu": 0,
+    "small_class_mem_gib": 0,
+    "gpu_busy_floor": 0.0,
+    "max_full_gpu_pods": 0
+  }
+}

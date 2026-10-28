@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nrp-kit"
+version = "0.1.0"
+description = "Batch work on the National Research Platform: measured sizing, preflight checks, block-volume weight staging and polite submission through nats-bursting"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Andrew H. Bond"}]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+submit = ["nats-bursting"]
+test = ["pytest>=7"]
+
+[tool.setuptools]
+packages = ["nrp_kit"]
+
+[tool.setuptools.package-data]
+nrp_kit = ["*.py"]
