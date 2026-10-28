@@ -67,32 +67,36 @@ def _read_file(path: str, targets: dict, pinned: bool) -> list[str]:
     return keys
 
 
-def _rebuild_meta_buffers(model, cfg, device) -> None:
-    """Replace each module that still holds buffers on meta (they are computed at construction,
-    not stored in the files) with a fresh one built on ``device`` from the config."""
-    for name, mod in list(model.named_modules()):
-        if not any(b.device.type == "meta" for b in mod.buffers(recurse=False)):
-            continue
+def _computed(model) -> list[str]:
+    """Names of the modules that own non-persistent buffers: values computed at construction
+    (rotary frequencies), not stored in the files."""
+    return [n for n, m in model.named_modules()
+            if any(b in m._non_persistent_buffers_set for b, _ in m.named_buffers(recurse=False))]
+
+
+def _rebuild(model, names: list[str], cfg, device) -> None:
+    """Replace each named module with a fresh one built on ``device`` from the config.
+    to_empty leaves their buffers allocated but uninitialised, so this is not optional."""
+    for name in names:
+        mod = model.get_submodule(name)
         parent_name, _, attr = name.rpartition(".")
-        parent = model.get_submodule(parent_name)
         try:
-            setattr(parent, attr, type(mod)(config=cfg, device=device))
+            new = type(mod)(config=cfg, device=device)
         except TypeError as e:
             raise ValueError(f"cannot rebuild {name} ({type(mod).__name__}) on {device}: {e}") from e
-    left = [n for n, b in model.named_buffers() if b.device.type == "meta"]
-    if left:
-        raise ValueError(f"buffers still on meta: {left}")
+        setattr(model.get_submodule(parent_name), attr, new)
 
 
 def load_model(model_dir: str, shards: list[str], device: str = "cuda", dtype=torch.bfloat16):
     """The model in ``model_dir`` (config files) with weights from ``shards``, on ``device``,
-    in eval mode. Every parameter must come from exactly the files given."""
+    in eval mode. Every parameter and stored buffer must come from exactly the files given."""
     cfg = AutoConfig.from_pretrained(model_dir)
     with torch.device("meta"):
         model = AutoModelForCausalLM.from_config(cfg, dtype=dtype)
+    computed = _computed(model)
     model.to_empty(device=device)
     model.tie_weights()  # moving off meta can untie shared weights; tie them again
-    targets = dict(model.named_parameters(remove_duplicate=False))
+    targets = model.state_dict(keep_vars=True)  # parameters (tied ones under each name) and stored buffers
     pinned = torch.device(device).type == "cuda"
     with ThreadPoolExecutor(max(1, len(shards))) as ex:
         per_file = list(ex.map(lambda p: _read_file(p, targets, pinned), shards))
@@ -100,10 +104,10 @@ def load_model(model_dir: str, shards: list[str], device: str = "cuda", dtype=to
     if len(loaded) != len(set(loaded)):
         raise ValueError("a weight appears in more than one file")
     have = {id(targets[k]) for k in loaded}
-    missing = {k for k, p in model.named_parameters() if id(p) not in have}
+    missing = [k for k, t in targets.items() if id(t) not in have]
     if missing:
         raise ValueError(f"weights missing from the files: {sorted(missing)[:5]}")
-    _rebuild_meta_buffers(model, cfg, device)
+    _rebuild(model, computed, cfg, device)
     return model.eval()
 
 
